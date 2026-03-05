@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFA Setup Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .shadow-soft {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+
+        #pdf-template {
+            position: absolute;
+            left: -9999px;
+            width: 800px;
+            background: white;
+            padding: 60px;
+            color: #1a1a1a;
+        }
+
+        .instruction-step {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-start !important;
+            gap: 16px !important;
+            margin-bottom: 22px !important;
+        }
+
+        .step-number {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background-color: #dbeafe !important;
+            color: #1d4ed8 !important;
+            font-weight: 700 !important;
+            border-radius: 50% !important;
+            width: 26px !important;
+            height: 26px !important;
+            min-width: 26px !important;
+            min-height: 26px !important;
+            font-size: 12px !important;
+            margin-top: 1px !important; 
+        }
+
+        .step-number span {
+            display: block !important;
+            transform: translateY(-3px) !important;
+            line-height: 1 !important;
+        }
+
+        .step-text {
+            font-size: 14px !important;
+            line-height: 1.5 !important;
+            margin: 0 !important;
+            color: #374151 !important;
+            padding-top: 4px !important; 
+        }
+
+        .pdf-platform-header {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            margin-bottom: 24px !important;
+            border-bottom: 2px solid #f3f4f6 !important;
+            padding-bottom: 10px !important;
+            height: 40px !important; 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="text-center mb-10 max-w-lg">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-soft mb-6 border border-gray-100">
+            <i data-lucide="shield-check" class="text-green-500 w-8 h-8"></i>
+        </div>
+        <h1 class="text-4xl font-light text-gray-800 mb-3 tracking-tight">MFA Setup Generator</h1>
+        <p class="text-gray-500 text-lg font-normal">
+            Create PDF instructions for setting up Microsoft Authenticator.
+        </p>
+    </div>
+
+    <div class="w-full max-w-2xl bg-white rounded-[32px] p-10 shadow-soft border border-gray-100 mb-8">
+        
+        <div class="mb-6">
+            <label class="block text-[11px] font-bold text-gray-400 tracking-wider mb-2 uppercase">User Email Address</label>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i data-lucide="mail" class="w-5 h-5 text-gray-400"></i>
+                </div>
+                <input type="email" id="email-input" 
+                    class="block w-full pl-12 pr-4 py-4 bg-blue-50/50 border-0 rounded-2xl text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-blue-100 transition-all outline-none" 
+                    placeholder="company:user@company.com">
+            </div>
+        </div>
+
+        <div class="mb-2">
+            <label class="block text-[11px] font-bold text-gray-400 tracking-wider mb-2 uppercase">TOTP Secret Token</label>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i data-lucide="key-round" class="w-5 h-5 text-gray-400"></i>
+                </div>
+                <input type="text" id="token-input" 
+                    class="block w-full pl-12 pr-4 py-4 bg-gray-50 border-0 rounded-2xl text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-gray-200 transition-all outline-none" 
+                    placeholder="ABCD 1234 EFGH 5678">
+            </div>
+        </div>
+        
+        <p class="text-[12px] text-gray-400 flex items-center gap-1.5 mb-10">
+            <i data-lucide="info" class="w-3.5 h-3.5"></i>
+            This is the secret key provided by Microsoft 365 during setup.
+        </p>
+
+        <button id="generate-btn" 
+            class="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-5 rounded-2xl flex items-center justify-center gap-3 transition-all transform active:scale-[0.98]">
+            <i data-lucide="download" class="w-5 h-5"></i>
+            Generate Setup Guide
+        </button>
+    </div>
+
+    <div id="pdf-template">
+        <div class="flex justify-between items-start border-b-2 border-blue-600 pb-8 mb-10">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-1">Multifactor Authentication Setup</h1>
+                <p class="text-blue-600 font-medium tracking-wide">Microsoft 365 Security Protocol</p>
+            </div>
+            <div class="text-right text-xs text-gray-400">
+                <p>Internal Only</p>
+                <p>Issued: <span id="current-date"></span></p>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-center gap-8 bg-gray-50 rounded-3xl p-8 mb-10 border border-gray-100">
+            <div class="text-center">
+                <p class="text-xs uppercase font-bold text-gray-400 tracking-widest mb-2">Account Email</p>
+                <p id="pdf-email" class="text-xl font-semibold text-gray-800"></p>
+            </div>
+            <div class="h-16 w-px bg-gray-200"></div>
+            <div id="pdf-qrcode" class="bg-white p-3 rounded-xl shadow-sm border border-gray-100"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-12">
+            <div>
+                <div class="pdf-platform-header">
+                    <h2 class="text-lg font-bold text-gray-900">iPhone Instructions</h2>
+                </div>
+                
+                <div class="instruction-step">
+                    <div class="step-number"><span>1</span></div>
+                    <p class="step-text">Open the <strong>App Store</strong> and download the <strong>Microsoft Authenticator</strong> app.</p>
+                </div>
+                
+                <div class="instruction-step">
+                    <div class="step-number"><span>2</span></div>
+                    <p class="step-text">Open the app and tap the <strong>+</strong> icon in the top right corner.</p>
+                </div>
+                
+                <div class="instruction-step">
+                    <div class="step-number"><span>3</span></div>
+                    <p class="step-text">Select <strong>Work or school account</strong> from the list of options.</p>
+                </div>
+                
+                <div class="instruction-step">
+                    <div class="step-number"><span>4</span></div>
+                    <p class="step-text">Choose <strong>Scan a QR code</strong> and point your camera at the code provided above.</p>
+                </div>
+            </div>
+
+            <div>
+                <div class="pdf-platform-header">
+                    <h2 class="text-lg font-bold text-gray-900">Android Instructions</h2>
+                </div>
+                
+                <div class="instruction-step">
+                    <div class="step-number"><span>1</span></div>
+                    <p class="step-text">Open the <strong>Google Play Store</strong> and install <strong>Microsoft Authenticator</strong>.</p>
+                </div>
+                
+                <div class="instruction-step">
+                    <div class="step-number"><span>2</span></div>
+                    <p class="step-text">Open the app and tap the <strong>+</strong> icon to add an account.</p>
+                </div>
+                
+                <div class="instruction-step">
+                    <div class="step-number"><span>3</span></div>
+                    <p class="step-text">Choose <strong>Add account</strong>, then <strong>Work or school account</strong>.</p>
+                </div>
+                
+                <div class="instruction-step">
+                    <div class="step-number"><span>4</span></div>
+                    <p class="step-text">Select <strong>Scan QR code</strong> and focus on the code at the top of this guide.</p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-16 pt-6 border-t border-gray-100 text-center">
+            <p class="text-[10px] text-gray-400 uppercase tracking-widest font-medium">Generated by {Your Company Name} &bull; Confidential</p>
+        </footer>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-GB');
+
+        const generateBtn = document.getElementById('generate-btn');
+        const emailInput = document.getElementById('email-input');
+        const tokenInput = document.getElementById('token-input');
+        const qrContainer = document.getElementById('pdf-qrcode');
+        const pdfEmailDisplay = document.getElementById('pdf-email');
+
+        generateBtn.addEventListener('click', async () => {
+            const email = emailInput.value.trim();
+            const token = tokenInput.value.trim().replace(/\s/g, ''); 
+
+            if (!email || !token) {
+                alert("Please provide both an email address and a TOTP secret token.");
+                return;
+            }
+
+            const originalContent = generateBtn.innerHTML;
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Generating...`;
+            lucide.createIcons();
+
+            try {
+                pdfEmailDisplay.innerText = email.split(':')[1];
+                qrContainer.innerHTML = "";
+                
+                const otpauthUrl = `otpauth://totp/${email}?secret=${token}&issuer=Microsoft`;
+
+                new QRCode(qrContainer, {
+                    text: otpauthUrl,
+                    width: 140,
+                    height: 140,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                const element = document.getElementById('pdf-template');
+                const canvas = await html2canvas(element, {
+                    scale: 3, 
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: "#ffffff",
+                    windowWidth: 800
+                });
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 210; 
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                pdf.save(`MFA_Setup_${email.split('@')[0]}.pdf`);
+
+            } catch (err) {
+                console.error(err);
+                alert("Failed to generate PDF. Please check your token and try again.");
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = originalContent;
+                lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>
